@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบคัดกรองสุขภาพ NCD ตำบลคำใหญ่</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --primary: #1a6b4a;
+    --primary-light: #e8f5ef;
+    --primary-mid: #2d9e6b;
+    --secondary: #0f4a8a;
+    --accent: #e85d2f;
+    --warn: #e8a020;
+    --danger: #d93025;
+    --success: #1a6b4a;
+    --bg: #f4f7f5;
+    --card: #ffffff;
+    --text: #1a2a1e;
+    --text2: #4a6358;
+    --border: #d4e4da;
+    --sidebar-w: 240px;
+    --header-h: 60px;
+  }
+  body { font-family: 'Sarabun', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LAYOUT */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+  header {
+    background: var(--primary);
+    color: #fff;
+    height: var(--header-h);
+    display: flex; align-items: center;
+    padding: 0 1rem;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    gap: 12px;
+  }
+  header .logo { width: 38px; height: 38px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  header .logo svg { width: 24px; height: 24px; }
+  header h1 { font-size: 15px; font-weight: 600; line-height: 1.2; }
+  header .subtitle { font-size: 11px; opacity: 0.8; }
+  header .hamburger { margin-left: auto; background: none; border: none; color: #fff; cursor: pointer; padding: 6px; display: none; }
+
+  .layout { display: flex; margin-top: var(--header-h); min-height: calc(100vh - var(--header-h)); }
+
+  /* SIDEBAR */
+  aside {
+    width: var(--sidebar-w);
+    background: #fff;
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: var(--header-h);
+    bottom: 0;
+    overflow-y: auto;
+    z-index: 90;
+    transition: transform 0.2s;
+  }
+  aside nav { padding: 0.75rem 0; }
+  aside .nav-section { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; padding: 0.75rem 1.25rem 0.25rem; }
+  aside .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 1.25rem;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text2);
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  aside .nav-item:hover { background: var(--primary-light); color: var(--primary); }
+  aside .nav-item.active { background: var(--primary-light); color: var(--primary); border-left-color: var(--primary); font-weight: 600; }
+  aside .nav-icon { width: 18px; text-align: center; font-size: 16px; }
+
+  /* MAIN */
+  main { margin-left: var(--sidebar-w); flex: 1; padding: 1.5rem; max-width: calc(100vw - var(--sidebar-w)); }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .card-title .icon { color: var(--primary); }
+
+  /* STAT GRID */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1rem; }
+  .stat-card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 1rem; }
+  .stat-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .stat-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .stat-card.green .stat-value { color: var(--primary); }
+  .stat-card.blue .stat-value { color: var(--secondary); }
+  .stat-card.orange .stat-value { color: var(--warn); }
+  .stat-card.red .stat-value { color: var(--danger); }
+  .stat-card.teal .stat-value { color: #0d8a8a; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { margin: 0.5rem 0; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .fill-green { background: var(--primary-mid); }
+  .fill-blue { background: var(--secondary); }
+  .fill-orange { background: var(--warn); }
+  .fill-red { background: var(--danger); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--primary-light); color: var(--primary); font-weight: 600; padding: 10px 12px; text-align: left; font-size: 12px; white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:hover td { background: #f9fcfa; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #e8f5ef; color: #1a6b4a; }
+  .badge-yellow { background: #fff8e6; color: #9a6c10; }
+  .badge-orange { background: #fff0e6; color: #b84f10; }
+  .badge-red { background: #fdeaea; color: #a01a1a; }
+  .badge-blue { background: #e6f0fa; color: #0f4a8a; }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 12px; font-weight: 600; color: var(--text2); }
+  input, select, textarea {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--primary); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #1a5c3e; }
+  .btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn-outline:hover { background: var(--primary-light); }
+  .btn-danger { background: #fdeaea; color: var(--danger); border: 1px solid #f5bcbc; }
+  .btn-sm { padding: 4px 12px; font-size: 12px; }
+
+  /* PAGE HEADER */
+  .page-header { margin-bottom: 1.25rem; }
+  .page-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+  .page-header p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .page-header .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  /* CHART CONTAINER */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* GRID 2 COL */
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+
+  /* RISK BADGE */
+  .risk-normal { background: #e8f5ef; color: #1a6b4a; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+  .risk-watch { background: #fff8e6; color: #9a6c10; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+  .risk-high { background: #fdeaea; color: #a01a1a; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+
+  /* SCREENING FORM RESULT */
+  .result-box { background: linear-gradient(135deg, var(--primary-light), #fff); border: 1px solid var(--primary-mid); border-radius: 12px; padding: 1.25rem; margin-top: 1rem; display: none; }
+  .result-box.show { display: block; }
+  .result-title { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 0.75rem; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #dae8e0; font-size: 13px; }
+  .result-row:last-child { border-bottom: none; }
+
+  /* SATISFACTION */
+  .star-row { display: flex; gap: 6px; }
+  .star { font-size: 28px; cursor: pointer; color: #ccc; transition: color 0.1s; }
+  .star.active, .star:hover { color: #e8a020; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 2px solid var(--border); }
+  .tab { padding: 8px 16px; font-size: 13px; cursor: pointer; border: none; background: none; color: var(--text2); font-family: inherit; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: min(520px, 95vw); max-height: 90vh; overflow-y: auto; padding: 1.5rem; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text2); padding: 2px 8px; border-radius: 6px; }
+  .modal-close:hover { background: var(--bg); }
+
+  /* SEARCH */
+  .search-bar { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .search-bar input { flex: 1; min-width: 160px; }
+  .search-bar select { min-width: 140px; }
+
+  /* NOTIFICATION CARD */
+  .notif { background: var(--primary-light); border-left: 4px solid var(--primary); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-size: 13px; }
+  .notif.warn { background: #fff8e6; border-left-color: var(--warn); }
+  .notif.danger { background: #fdeaea; border-left-color: var(--danger); }
+
+  /* PRIVACY TABLE */
+  .privacy-log { font-size: 12px; }
+  .privacy-log td { font-size: 12px; }
+
+  /* VILLAGE PILLS */
+  .village-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .village-pill { padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: var(--text2); transition: all 0.15s; }
+  .village-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    aside { transform: translateX(-100%); }
+    aside.open { transform: translateX(0); }
+    main { margin-left: 0; max-width: 100vw; padding: 1rem; }
+    header .hamburger { display: block; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  /* PRINT */
+  @media print {
+    aside, header, .btn, .search-bar { display: none; }
+    main { margin: 0; padding: 0; }
+  }
+
+  .section-divider { height: 1px; background: var(--border); margin: 1rem 0; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .text-muted { color: var(--text2); font-size: 12px; }
+  .mt-sm { margin-top: 0.5rem; }
+  .gap-sm { gap: 6px; }
+  .inline-flex { display: inline-flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C8 2 4 6 4 10c0 5.5 8 12 8 12s8-6.5 8-12c0-4-4-8-8-8z" fill="#1a6b4a"/>
+        <path d="M12 6v8M8 10h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <h1>ระบบคัดกรองสุขภาพ NCD</h1>
+      <div class="subtitle">ตำบลคำใหญ่ · อสม. 12 หมู่บ้าน</div>
+    </div>
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="เมนู">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect y="4" width="24" height="2" rx="1"/><rect y="11" width="24" height="2" rx="1"/><rect y="18" width="24" height="2" rx="1"/></svg>
+    </button>
+  </header>
+
+  <div class="layout">
+    <aside id="sidebar">
+      <nav>
+        <div class="nav-section">ภาพรวม</div>
+        <div class="nav-item active" onclick="showPage('dashboard', this)">
+          <span class="nav-icon">📊</span> แดชบอร์ด
+        </div>
+        <div class="nav-item" onclick="showPage('stats-daily', this)">
+          <span class="nav-icon">📅</span> สถิติรายวัน/เดือน
+        </div>
+        <div class="nav-item" onclick="showPage('stats-age', this)">
+          <span class="nav-icon">👥</span> สถิติตามช่วงอายุ
+        </div>
+        <div class="nav-item" onclick="showPage('stats-freq', this)">
+          <span class="nav-icon">🔄</span> ความถี่การใช้บริการ
+        </div>
+
+        <div class="nav-section">การคัดกรอง</div>
+        <div class="nav-item" onclick="showPage('screening', this)">
+          <span class="nav-icon">🩺</span> บันทึกคัดกรอง
+        </div>
+        <div class="nav-item" onclick="showPage('targets', this)">
+          <span class="nav-icon">📋</span> รายชื่อกลุ่มเป้าหมาย
+        </div>
+        <div class="nav-item" onclick="showPage('results', this)">
+          <span class="nav-icon">📈</span> ผลคัดกรองรายบุคคล
+        </div>
+
+        <div class="nav-section">คุณภาพ</div>
+        <div class="nav-item" onclick="showPage('privacy', this)">
+          <span class="nav-icon">🔒</span> ข้อมูลส่วนบุคคล (PDPA)
+        </div>
+        <div class="nav-item" onclick="showPage('satisfaction', this)">
+          <span class="nav-icon">⭐</span> ความพึงพอใจ
+        </div>
+        <div class="nav-item" onclick="showPage('about', this)">
+          <span class="nav-icon">ℹ️</span> เกณฑ์การคัดกรอง
+        </div>
+      </nav>
+    </aside>
+
+    <main id="main-content">
+
+      <!-- DASHBOARD PAGE -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-header">
+          <h2>📊 แดชบอร์ดภาพรวม</h2>
+          <p>ข้อมูลกลุ่มเป้าหมายคัดกรอง NCD ตำบลคำใหญ่ อายุ 35 ปีขึ้นไป</p>
+          <div class="actions">
+            <button class="btn btn-primary btn-sm" onclick="exportReport()">⬇ ดาวน์โหลดรายงาน</button>
+            <button class="btn btn-outline btn-sm" onclick="printPage()">🖨 พิมพ์</button>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card blue">
+            <div class="stat-label">กลุ่มเป้าหมายทั้งหมด</div>
+            <div class="stat-value">3,699</div>
+            <div class="stat-sub">12 หมู่บ้าน</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">ได้รับการคัดกรองแล้ว</div>
+            <div class="stat-value">2,173</div>
+            <div class="stat-sub">58.7% ความครอบคลุม</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-label">ยังไม่ได้คัดกรอง</div>
+            <div class="stat-value">1,526</div>
+            <div class="stat-sub">41.3% คงเหลือ</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-label">พบความเสี่ยง/ป่วย</div>
+            <div class="stat-value">847</div>
+            <div class="stat-sub">38.9% ของที่คัดกรอง</div>
+          </div>
+          <div class="stat-card teal">
+            <div class="stat-label">คัดกรองวันนี้</div>
+            <div class="stat-value" id="today-count">24</div>
+            <div class="stat-sub" id="today-date">10 มิ.ย. 2569</div>
+          </div>
+        </div>
+
+        <!-- Coverage by village -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🏘</span> ความครอบคลุมการคัดกรองรายหมู่บ้าน</div>
+          <div id="village-coverage"></div>
+        </div>
+
+        <div class="grid-2">
+          <!-- BP chart -->
+          <div class="card">
+            <div class="card-title"><span class="icon">❤️</span> ผลความดันโลหิต (n=2,173)</div>
+            <div class="chart-wrap" style="height:220px">
+              <canvas id="bpChart" role="img" aria-label="ผลความดันโลหิต">ปกติ 45% สูงกว่าปกติ 30% ความดันสูง 25%</canvas>
+            </div>
+          </div>
+          <!-- Blood sugar chart -->
+          <div class="card">
+            <div class="card-title"><span class="icon">🍬</span> ระดับน้ำตาลในเลือด (DTX)</div>
+            <div class="chart-wrap" style="height:220px">
+              <canvas id="dtxChart" role="img" aria-label="ระดับน้ำตาลในเลือด">ปกติ 58% เสี่ยง 28% ป่วย 14%</canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- BMI chart -->
+          <div class="card">
+            <div class="card-title"><span class="icon">⚖️</span> ดัชนีมวลกาย (BMI)</div>
+            <div class="chart-wrap" style="height:200px">
+              <canvas id="bmiChart" role="img" aria-label="ดัชนีมวลกาย">ผอม 5% ปกติ 38% เริ่มอ้วน 32% อ้วน 25%</canvas>
+            </div>
+          </div>
+          <!-- Gender chart -->
+          <div class="card">
+            <div class="card-title"><span class="icon">👤</span> สัดส่วนเพศในกลุ่มเป้าหมาย</div>
+            <div class="chart-wrap" style="height:200px">
+              <canvas id="genderChart" role="img" aria-label="สัดส่วนเพศ">ชาย 41% หญิง 59%</canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🔔</span> การแจ้งเตือนและติดตาม</div>
+          <div class="notif danger">🚨 มี 47 ราย มีระดับน้ำตาล DTX ≥ 126 — รอรับการดูแลต่อเนื่อง</div>
+          <div class="notif warn">⚠️ มี 312 ราย ความดันโลหิต SBP 130-139 — ควรติดตามซ้ำภายใน 1 เดือน</div>
+          <div class="notif">✅ หมู่ 4 บ้านนาดี ครอบคลุม 82% — สูงสุดของตำบล</div>
+        </div>
+      </div>
+
+      <!-- DAILY STATS PAGE -->
+      <div id="page-stats-daily" class="page">
+        <div class="page-header">
+          <h2>📅 สถิติการใช้บริการรายวัน/เดือน</h2>
+          <p>ข้อมูลความถี่การคัดกรองสุขภาพตามช่วงเวลา</p>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('daily','tab-day',this)">รายวัน</button>
+          <button class="tab" onclick="switchTab('daily','tab-month',this)">รายเดือน</button>
+          <button class="tab" onclick="switchTab('daily','tab-year',this)">เปรียบเทียบปี</button>
+        </div>
+
+        <div id="tab-day" class="tab-content active">
+          <div class="stat-grid">
+            <div class="stat-card green"><div class="stat-label">เฉลี่ยต่อวัน</div><div class="stat-value">38</div><div class="stat-sub">ราย/วัน</div></div>
+            <div class="stat-card blue"><div class="stat-label">สูงสุดใน 1 วัน</div><div class="stat-value">87</div><div class="stat-sub">วันออกหน่วย</div></div>
+            <div class="stat-card orange"><div class="stat-label">วันทำงานเฉลี่ย</div><div class="stat-value">18</div><div class="stat-sub">วัน/เดือน</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title">จำนวนการคัดกรองรายวัน (มิ.ย. 2569)</div>
+            <div class="chart-wrap" style="height:260px">
+              <canvas id="dailyChart" role="img" aria-label="การคัดกรองรายวันเดือนมิถุนายน 2569"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-month" class="tab-content">
+          <div class="card">
+            <div class="card-title">จำนวนการคัดกรองรายเดือน ปี 2569</div>
+            <div class="chart-wrap" style="height:280px">
+              <canvas id="monthlyChart" role="img" aria-label="การคัดกรองรายเดือนปี 2569"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">สรุปตามหมู่บ้าน รายเดือน</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>หมู่บ้าน</th><th>เป้าหมาย</th><th>ม.ค.</th><th>ก.พ.</th><th>มี.ค.</th><th>เม.ย.</th><th>พ.ค.</th><th>มิ.ย.</th><th>รวม</th><th>%</th></tr></thead>
+                <tbody id="monthly-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-year" class="tab-content">
+          <div class="card">
+            <div class="card-title">เปรียบเทียบการคัดกรองปี 2567–2569</div>
+            <div class="chart-wrap" style="height:280px">
+              <canvas id="yearChart" role="img" aria-label="เปรียบเทียบการคัดกรองรายปี"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGE STATS PAGE -->
+      <div id="page-stats-age" class="page">
+        <div class="page-header">
+          <h2>👥 สถิติตามช่วงอายุ</h2>
+          <p>การกระจายตัวของประชากรและผลคัดกรองตามกลุ่มอายุ</p>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card blue"><div class="stat-label">35–44 ปี</div><div class="stat-value">892</div><div class="stat-sub">24.1%</div></div>
+          <div class="stat-card green"><div class="stat-label">45–54 ปี</div><div class="stat-value">1,024</div><div class="stat-sub">27.7%</div></div>
+          <div class="stat-card orange"><div class="stat-label">55–64 ปี</div><div class="stat-value">983</div><div class="stat-sub">26.6%</div></div>
+          <div class="stat-card red"><div class="stat-label">65 ปีขึ้นไป</div><div class="stat-value">800</div><div class="stat-sub">21.6%</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">การกระจายตัวตามช่วงอายุ</div>
+            <div class="chart-wrap" style="height:260px">
+              <canvas id="ageDistChart" role="img" aria-label="การกระจายตัวตามช่วงอายุ"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">ความเสี่ยง NCD ตามช่วงอายุ</div>
+            <div class="chart-wrap" style="height:260px">
+              <canvas id="ageRiskChart" role="img" aria-label="ความเสี่ยง NCD ตามช่วงอายุ"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">ผลคัดกรองแยกตามช่วงอายุและเพศ</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ช่วงอายุ</th><th>ชาย</th><th>หญิง</th><th>รวม</th><th>คัดกรองแล้ว</th><th>ความดันสูง</th><th>น้ำตาลสูง</th><th>BMI เกิน</th></tr></thead>
+              <tbody>
+                <tr><td>35–44 ปี</td><td>356</td><td>536</td><td>892</td><td>521</td><td><span class="badge badge-yellow">12%</span></td><td><span class="badge badge-yellow">8%</span></td><td><span class="badge badge-orange">34%</span></td></tr>
+                <tr><td>45–54 ปี</td><td>411</td><td>613</td><td>1,024</td><td>618</td><td><span class="badge badge-orange">28%</span></td><td><span class="badge badge-yellow">18%</span></td><td><span class="badge badge-orange">42%</span></td></tr>
+                <tr><td>55–64 ปี</td><td>394</td><td>589</td><td>983</td><td>602</td><td><span class="badge badge-red">44%</span></td><td><span class="badge badge-orange">31%</span></td><td><span class="badge badge-orange">38%</span></td></tr>
+                <tr><td>65+ ปี</td><td>320</td><td>480</td><td>800</td><td>432</td><td><span class="badge badge-red">58%</span></td><td><span class="badge badge-red">42%</span></td><td><span class="badge badge-yellow">28%</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- FREQ STATS PAGE -->
+      <div id="page-stats-freq" class="page">
+        <div class="page-header">
+          <h2>🔄 ความถี่การใช้บริการต่อปี</h2>
+          <p>สถิติการเข้ารับการคัดกรองของกลุ่มเป้าหมาย</p>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-card green"><div class="stat-label">คัดกรอง 1 ครั้ง/ปี</div><div class="stat-value">1,487</div><div class="stat-sub">68.4%</div></div>
+          <div class="stat-card blue"><div class="stat-label">คัดกรอง 2 ครั้ง/ปี</div><div class="stat-value">543</div><div class="stat-sub">25.0%</div></div>
+          <div class="stat-card orange"><div class="stat-label">คัดกรอง 3+ ครั้ง/ปี</div><div class="stat-value">143</div><div class="stat-sub">6.6%</div></div>
+          <div class="stat-card red"><div class="stat-label">ไม่เคยคัดกรอง</div><div class="stat-value">1,526</div><div class="stat-sub">41.3% ของทั้งหมด</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">ความถี่การคัดกรองต่อปี</div>
+            <div class="chart-wrap" style="height:240px">
+              <canvas id="freqChart" role="img" aria-label="ความถี่การคัดกรองต่อปี"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">การคัดกรองซ้ำตามกลุ่มโรค</div>
+            <div style="margin-top:8px">
+              <div class="progress-wrap"><div class="progress-label"><span>กลุ่มเสี่ยงความดัน</span><span>78%</span></div><div class="progress-bar"><div class="progress-fill fill-red" style="width:78%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-label"><span>กลุ่มเสี่ยงเบาหวาน</span><span>72%</span></div><div class="progress-bar"><div class="progress-fill fill-orange" style="width:72%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-label"><span>กลุ่มปกติทั่วไป</span><span>41%</span></div><div class="progress-bar"><div class="progress-fill fill-green" style="width:41%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-label"><span>กลุ่มผู้สูงอายุ 65+</span><span>88%</span></div><div class="progress-bar"><div class="progress-fill fill-blue" style="width:88%"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">รายละเอียดการเข้าใช้บริการรายหมู่บ้าน</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>หมู่บ้าน</th><th>กลุ่มเป้าหมาย</th><th>1ครั้ง</th><th>2ครั้ง</th><th>3+ครั้ง</th><th>ไม่เคย</th><th>เฉลี่ยครั้ง/คน</th></tr></thead>
+              <tbody id="freq-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCREENING FORM PAGE -->
+      <div id="page-screening" class="page">
+        <div class="page-header">
+          <h2>🩺 บันทึกผลการคัดกรองสุขภาพ</h2>
+          <p>กรอกข้อมูลผลการตรวจสุขภาพประชาชน (บันทึกโดย อสม.)</p>
+        </div>
+
+        <div class="card">
+          <div class="card-title">ข้อมูลผู้รับการคัดกรอง</div>
+          <div class="form-grid">
+            <div class="form-group" style="grid-column: 1/-1">
+              <label>ค้นหาชื่อ หรือ เลขบัตร</label>
+              <input type="text" id="search-person" placeholder="พิมพ์ชื่อ หรือ เลขบัตรประชาชน..." oninput="searchPerson()">
+            </div>
+            <div class="form-group">
+              <label>ชื่อ – สกุล *</label>
+              <input type="text" id="f-name" placeholder="ชื่อ นามสกุล">
+            </div>
+            <div class="form-group">
+              <label>เพศ</label>
+              <select id="f-gender"><option value="">เลือก</option><option>ชาย</option><option>หญิง</option></select>
+            </div>
+            <div class="form-group">
+              <label>อายุ (ปี)</label>
+              <input type="number" id="f-age" min="35" max="100" placeholder="อายุ">
+            </div>
+            <div class="form-group">
+              <label>หมู่บ้าน</label>
+              <select id="f-village">
+                <option value="">เลือกหมู่บ้าน</option>
+                <option>หมู่ 1 บ้านหัวสนาม</option><option>หมู่ 2 บ้านคำเจริญ</option>
+                <option>หมู่ 3 บ้านชัยศรี</option><option>หมู่ 4 บ้านนาดี</option>
+                <option>หมู่ 5 บ้านห้วยยาง</option><option>หมู่ 6 บ้านห้วยม่วง</option>
+                <option>หมู่ 7 บ้านคำใหญ่</option><option>หมู่ 8 บ้านคำถาวร</option>
+                <option>หมู่ 9 บ้านโพธิ์ทอง</option><option>หมู่ 10 บ้านโคกป่ากุง</option>
+                <option>หมู่ 11 บ้านคำใหญ่</option><option>หมู่ 12 บ้านคำเจริญ</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>อสม. ผู้บันทึก</label>
+              <input type="text" id="f-asr" placeholder="ชื่อ อสม.">
+            </div>
+            <div class="form-group">
+              <label>วันที่คัดกรอง</label>
+              <input type="date" id="f-date" value="2026-06-10">
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+          <div class="card-title" style="margin-bottom:0.75rem">ผลการตรวจ</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>ความดัน SBP (บน) มม.ปรอท</label>
+              <input type="number" id="f-sbp" placeholder="เช่น 120" min="60" max="250" oninput="calcResult()">
+            </div>
+            <div class="form-group">
+              <label>ความดัน DBP (ล่าง) มม.ปรอท</label>
+              <input type="number" id="f-dbp" placeholder="เช่น 80" min="40" max="160" oninput="calcResult()">
+            </div>
+            <div class="form-group">
+              <label>น้ำตาลในเลือด DTX (mg/dL)</label>
+              <input type="number" id="f-dtx" placeholder="เช่น 95" min="50" max="400" oninput="calcResult()">
+            </div>
+            <div class="form-group">
+              <label>ดัชนีมวลกาย BMI</label>
+              <input type="number" id="f-bmi" placeholder="เช่น 23.5" step="0.1" min="10" max="60" oninput="calcResult()">
+            </div>
+            <div class="form-group">
+              <label>รอบเอว (นิ้ว)</label>
+              <input type="number" id="f-waist" placeholder="เช่น 32" min="20" max="60">
+            </div>
+            <div class="form-group">
+              <label>สูบบุหรี่</label>
+              <select id="f-smoke"><option>ไม่สูบ</option><option>สูบ</option><option>เคยสูบ</option></select>
+            </div>
+            <div class="form-group">
+              <label>ดื่มสุรา</label>
+              <select id="f-drink"><option>ไม่ดื่ม</option><option>ดื่ม</option><option>เคยดื่ม</option></select>
+            </div>
+          </div>
+
+          <!-- Auto result box -->
+          <div class="result-box" id="result-box">
+            <div class="result-title">🔍 ผลการประเมินอัตโนมัติ</div>
+            <div id="result-content"></div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:1rem; flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveScreening()">💾 บันทึกผล</button>
+            <button class="btn btn-outline" onclick="clearForm()">🗑 ล้างแบบฟอร์ม</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TARGETS PAGE -->
+      <div id="page-targets" class="page">
+        <div class="page-header">
+          <h2>📋 รายชื่อกลุ่มเป้าหมาย</h2>
+          <p>ประชาชนอายุ 35 ปีขึ้นไป ในเขต อบต.คำใหญ่ ทั้งหมด 3,699 ราย</p>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="target-search" placeholder="ค้นหาชื่อ..." oninput="filterTargets()">
+          <select id="target-village-filter" onchange="filterTargets()">
+            <option value="">ทุกหมู่บ้าน</option>
+            <option>หมู่ 1 บ้านหัวสนาม</option><option>หมู่ 2 บ้านคำเจริญ</option>
+            <option>หมู่ 3 บ้านชัยศรี</option><option>หมู่ 4 บ้านนาดี</option>
+            <option>หมู่ 5 บ้านห้วยยาง</option><option>หมู่ 6 บ้านห้วยม่วง</option>
+            <option>หมู่ 7 บ้านคำใหญ่</option><option>หมู่ 8 บ้านคำถาวร</option>
+            <option>หมู่ 9 บ้านโพธิ์ทอง</option><option>หมู่ 10 บ้านโคกป่ากุง</option>
+            <option>หมู่ 11 บ้านคำใหญ่</option><option>หมู่ 12 บ้านคำเจริญ</option>
+          </select>
+          <select id="target-status-filter" onchange="filterTargets()">
+            <option value="">ทุกสถานะ</option>
+            <option value="screened">คัดกรองแล้ว</option>
+            <option value="pending">รอคัดกรอง</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:0.75rem">
+            <span class="text-muted" id="target-count-label">แสดง 20 จาก 3,699 รายการ</span>
+            <button class="btn btn-outline btn-sm" onclick="exportTargets()">⬇ Export CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table id="targets-table">
+              <thead><tr><th>#</th><th>ชื่อ – สกุล</th><th>เพศ</th><th>อายุ</th><th>หมู่บ้าน</th><th>อสม.</th><th>สถานะ</th><th>การดำเนินการ</th></tr></thead>
+              <tbody id="targets-tbody"></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:1rem;align-items:center">
+            <button class="btn btn-outline btn-sm" id="prev-btn" onclick="changePage(-1)">← ก่อนหน้า</button>
+            <span class="text-muted" id="page-indicator">หน้า 1 / 185</span>
+            <button class="btn btn-outline btn-sm" id="next-btn" onclick="changePage(1)">ถัดไป →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTS PAGE -->
+      <div id="page-results" class="page">
+        <div class="page-header">
+          <h2>📈 ผลคัดกรองรายบุคคล</h2>
+          <p>ผลการตรวจสุขภาพ NCD จำนวน 2,173 ราย</p>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="result-search" placeholder="ค้นหาชื่อ..." oninput="filterResults()">
+          <select id="result-village" onchange="filterResults()">
+            <option value="">ทุกหมู่บ้าน</option>
+            <option value="4">หมู่ 4</option><option value="5">หมู่ 5</option><option value="7">หมู่ 7</option>
+          </select>
+          <select id="result-risk" onchange="filterResults()">
+            <option value="">ทุกระดับ</option>
+            <option value="normal">ปกติ</option>
+            <option value="risk">เสี่ยง</option>
+            <option value="sick">ป่วย</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ชื่อ – สกุล</th><th>เพศ</th><th>หมู่</th><th>SBP</th><th>DBP</th><th>DTX</th><th>BMI</th><th>ระดับความเสี่ยง</th><th>วันที่</th></tr></thead>
+              <tbody id="results-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRIVACY PAGE -->
+      <div id="page-privacy" class="page">
+        <div class="page-header">
+          <h2>🔒 หลักฐานการจัดการข้อมูลส่วนบุคคล (PDPA)</h2>
+          <p>บันทึกการเข้าถึงและใช้ข้อมูลส่วนบุคคลตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📜 ข้อมูลสิทธิ์ผู้ถือข้อมูล</div>
+            <div style="font-size:13px; line-height:1.8">
+              <p>✅ มีสิทธิ์เข้าถึงข้อมูลของตนเอง</p>
+              <p>✅ มีสิทธิ์แก้ไขข้อมูลที่ไม่ถูกต้อง</p>
+              <p>✅ มีสิทธิ์ลบข้อมูลส่วนบุคคล</p>
+              <p>✅ มีสิทธิ์คัดค้านการประมวลผล</p>
+              <p>✅ มีสิทธิ์รับข้อมูลในรูปแบบ Portable</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🛡️ มาตรการความปลอดภัย</div>
+            <div style="font-size:13px; line-height:1.8">
+              <p>🔐 เข้ารหัสข้อมูลบัตรประชาชน (Mask)</p>
+              <p>🔑 Login ด้วย User/Password</p>
+              <p>📝 บันทึก Log การเข้าถึงทุกครั้ง</p>
+              <p>🕐 Session หมดอายุ 30 นาที</p>
+              <p>🚫 จำกัดสิทธิ์ตามบทบาทผู้ใช้</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 ฐานทางกฎหมายในการเก็บข้อมูล</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ข้อมูล</th><th>วัตถุประสงค์</th><th>ฐานทางกฎหมาย</th><th>ระยะเวลาเก็บ</th></tr></thead>
+              <tbody>
+                <tr><td>ชื่อ-นามสกุล, เพศ, อายุ</td><td>ระบุตัวตน</td><td>สัญญา / ประโยชน์สาธารณะ</td><td>10 ปี</td></tr>
+                <tr><td>เลขบัตรประชาชน</td><td>ยืนยันตัวตน</td><td>กฎหมาย</td><td>10 ปี</td></tr>
+                <tr><td>ผลตรวจสุขภาพ (SBP,DBP,DTX,BMI)</td><td>คัดกรองโรค</td><td>ประโยชน์สาธารณะ / สุขภาพ</td><td>10 ปี</td></tr>
+                <tr><td>ที่อยู่ หมู่บ้าน</td><td>ติดตาม</td><td>ประโยชน์สาธารณะ</td><td>10 ปี</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📝 บันทึก Log การเข้าถึงข้อมูล</div>
+          <div class="table-wrap privacy-log">
+            <table>
+              <thead><tr><th>วันที่/เวลา</th><th>ผู้ใช้งาน</th><th>การกระทำ</th><th>ข้อมูลที่เข้าถึง</th><th>IP Address</th></tr></thead>
+              <tbody id="privacy-log-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📞 ข้อมูลผู้ควบคุมข้อมูลส่วนบุคคล</div>
+          <div style="font-size:13px; line-height:2">
+            <p><strong>ผู้ควบคุมข้อมูล:</strong> สำนักงานสาธารณสุขอำเภอ / อบต.คำใหญ่</p>
+            <p><strong>DPO (เจ้าหน้าที่คุ้มครองข้อมูล):</strong> นายแพทย์/พยาบาลผู้รับผิดชอบ</p>
+            <p><strong>ช่องทางติดต่อ:</strong> โรงพยาบาลส่งเสริมสุขภาพตำบลคำใหญ่</p>
+            <p><strong>อีเมล:</strong> health@khamyai.go.th</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SATISFACTION PAGE -->
+      <div id="page-satisfaction" class="page">
+        <div class="page-header">
+          <h2>⭐ ผลสรุปความพึงพอใจ</h2>
+          <p>แบบสอบถามความพึงพอใจต่อบริการคัดกรองสุขภาพ NCD</p>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card green">
+            <div class="stat-label">คะแนนเฉลี่ยรวม</div>
+            <div class="stat-value">4.3</div>
+            <div class="stat-sub">จาก 5 คะแนน</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-label">ผู้ตอบแบบสอบถาม</div>
+            <div class="stat-value">412</div>
+            <div class="stat-sub">คน</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-label">พึงพอใจมาก/มากที่สุด</div>
+            <div class="stat-value">87%</div>
+            <div class="stat-sub">ของผู้ตอบ</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">คะแนนความพึงพอใจรายด้าน</div>
+            <div class="chart-wrap" style="height:280px">
+              <canvas id="satisfChart" role="img" aria-label="คะแนนความพึงพอใจรายด้าน"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">สัดส่วนระดับความพึงพอใจ</div>
+            <div class="chart-wrap" style="height:280px">
+              <canvas id="satisfPieChart" role="img" aria-label="สัดส่วนระดับความพึงพอใจ"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📝 กรอกแบบสอบถามความพึงพอใจ</div>
+          <div style="margin-bottom:1rem">
+            <p style="font-size:13px; color:var(--text2); margin-bottom:1rem">กรุณาประเมินความพึงพอใจในการใช้บริการคัดกรองสุขภาพ</p>
+
+            <div id="sat-questions"></div>
+
+            <div class="form-group" style="margin-top:1rem">
+              <label>ข้อเสนอแนะเพิ่มเติม</label>
+              <textarea id="sat-comment" rows="3" placeholder="ข้อเสนอแนะ/ความคิดเห็น..."></textarea>
+            </div>
+            <button class="btn btn-primary" style="margin-top:0.75rem" onclick="submitSatisfaction()">ส่งแบบสอบถาม</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">ข้อเสนอแนะที่ได้รับ (ล่าสุด)</div>
+          <div id="feedback-list"></div>
+        </div>
+      </div>
+
+      <!-- ABOUT / CRITERIA PAGE -->
+      <div id="page-about" class="page">
+        <div class="page-header">
+          <h2>ℹ️ เกณฑ์การคัดกรอง NCD</h2>
+          <p>มาตรฐานค่าปกติและการแปลผล 4 ค่าหลัก ตามกรมควบคุมโรค</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">⚖️ ดัชนีมวลกาย (BMI)</div>
+            <table style="width:100%;font-size:13px">
+              <thead><tr><th>ค่า BMI</th><th>ความหมาย</th></tr></thead>
+              <tbody>
+                <tr><td>&lt; 18.5</td><td><span class="badge badge-blue">น้ำหนักต่ำกว่าเกณฑ์</span></td></tr>
+                <tr><td>18.5–22.9</td><td><span class="badge badge-green">น้ำหนักอยู่ในเกณฑ์</span></td></tr>
+                <tr><td>23.0–24.9</td><td><span class="badge badge-yellow">น้ำหนักเกิน</span></td></tr>
+                <tr><td>25.0–29.9</td><td><span class="badge badge-orange">โรคอ้วน</span></td></tr>
+                <tr><td>≥ 30.0</td><td><span class="badge badge-red">โรคอ้วนอันตราย</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">❤️ ความดันโลหิต (BP)</div>
+            <table style="width:100%;font-size:13px">
+              <thead><tr><th>SBP/DBP (มม.ปรอท)</th><th>ความหมาย</th></tr></thead>
+              <tbody>
+                <tr><td>&lt;120 / &lt;80</td><td><span class="badge badge-green">เหมาะสม</span></td></tr>
+                <tr><td>120–129 / 80–84</td><td><span class="badge badge-green">ปกติ</span></td></tr>
+                <tr><td>130–139 / 85–89</td><td><span class="badge badge-yellow">สูงกว่าปกติ</span></td></tr>
+                <tr><td>140–159 / 90–99</td><td><span class="badge badge-orange">ความดันสูงระดับ 1</span></td></tr>
+                <tr><td>160–179 / 100–109</td><td><span class="badge badge-red">ความดันสูงระดับ 2</span></td></tr>
+                <tr><td>≥180 / ≥110</td><td><span class="badge badge-red">ความดันสูงระดับ 3</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">🍬 น้ำตาลในเลือด (FBS)</div>
+            <table style="width:100%;font-size:13px">
+              <thead><tr><th>ระดับ (mg/dL)</th><th>การแปลผล</th></tr></thead>
+              <tbody>
+                <tr><td>&lt; 100</td><td><span class="badge badge-green">ปกติ</span></td></tr>
+                <tr><td>100–125</td><td><span class="badge badge-yellow">เสี่ยงเป็นเบาหวาน</span></td></tr>
+                <tr><td>≥ 126</td><td><span class="badge badge-red">ป่วยเป็นโรคเบาหวาน</span></td></tr>
+              </tbody>
+            </table>
+            <p style="font-size:11px;color:var(--text2);margin-top:8px">* วัดหลังงดอาหาร/เครื่องดื่ม 8 ชั่วโมง</p>
+          </div>
+          <div class="card">
+            <div class="card-title">🩸 ไขมันในเลือด (ค่าปกติ)</div>
+            <table style="width:100%;font-size:13px">
+              <thead><tr><th>ชนิด</th><th>ค่าปกติ</th></tr></thead>
+              <tbody>
+                <tr><td>คอเลสเตอรอลรวม</td><td>&lt; 200 mg/dL</td></tr>
+                <tr><td>LDL (ไขมันตัวร้าย)</td><td>&lt; 130 mg/dL</td></tr>
+                <tr><td>HDL ชาย</td><td>&gt; 40 mg/dL</td></tr>
+                <tr><td>HDL หญิง</td><td>&gt; 50 mg/dL</td></tr>
+                <tr><td>ไตรกลีเซอไรด์</td><td>&lt; 150 mg/dL</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">รายละเอียด</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ================== DATA ==================
+const VILLAGES = {
+  '1':'หมู่ 1 บ้านหัวสนาม','2':'หมู่ 2 บ้านคำเจริญ','3':'หมู่ 3 บ้านชัยศรี',
+  '4':'หมู่ 4 บ้านนาดี','5':'หมู่ 5 บ้านห้วยยาง','6':'หมู่ 6 บ้านห้วยม่วง',
+  '7':'หมู่ 7 บ้านคำใหญ่','8':'หมู่ 8 บ้านคำถาวร','9':'หมู่ 9 บ้านโพธิ์ทอง',
+  '10':'หมู่ 10 บ้านโคกป่ากุง','11':'หมู่ 11 บ้านคำใหญ่','12':'หมู่ 12 บ้านคำเจริญ'
+};
+const VILLAGE_TARGETS = {1:146,2:492,3:360,4:311,5:550,6:141,7:336,8:111,9:241,10:209,11:512,12:290};
+const ASM_NAMES = ['นางสาว สุวรรณา คำเจริญ','นางสาว นิภา ดีรักษา','นาย วิเชียร ขันอาษา',
+  'นาง สมพร ทองคำ','นางสาว รัตนา พลอยงาม','นาย สมชาย บุญมี'];
+const FIRST_NAMES_M = ['สมชาย','วิชัย','ธงชัย','สมศักดิ์','อนุชา','บุญมี','ชัยวัฒน์','สุรชัย'];
+const FIRST_NAMES_F = ['สมพร','นิภา','สุดา','มาลี','ทองคำ','รัตนา','สุวรรณา','วิภา'];
+const SURNAMES = ['ดีรักษา','บุญจิม','คำเจริญ','ทองดี','พลอยงาม','สุขสม','มั่งมี','บุตรวงค์'];
+
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function randItem(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+// Generate sample target data
+let allTargets = [];
+let idCounter = 1;
+for(let v=1;v<=12;v++){
+  const count = VILLAGE_TARGETS[v];
+  for(let i=0;i<count;i++){
+    const gender = Math.random()<0.41?'ชาย':'หญิง';
+    const age = rand(35,80);
+    const name = gender==='ชาย'
+      ? randItem(FIRST_NAMES_M)+' '+randItem(SURNAMES)
+      : randItem(FIRST_NAMES_F)+' '+randItem(SURNAMES);
+    allTargets.push({
+      id: idCounter++,
+      name, gender, age,
+      village: v,
+      villageName: VILLAGES[v+''],
+      asm: randItem(ASM_NAMES),
+      screened: Math.random()<0.588,
+      houseNo: rand(1,200)
+    });
+  }
+}
+
+// Generate screening results
+let screeningResults = allTargets.filter(t=>t.screened).map(t=>{
+  const sbp = rand(90,200);
+  const dbp = rand(55,120);
+  const dtx = rand(65,180);
+  const bmi = (rand(150,360)/10);
+  return {...t, sbp, dbp, dtx, bmi: parseFloat(bmi.toFixed(1)),
+    waist: rand(28,50), smoke: Math.random()<0.12?'สูบ':'ไม่สูบ',
+    drink: Math.random()<0.15?'ดื่ม':'ไม่ดื่ม',
+    date: `${rand(1,10)} มิ.ย. 2569`};
+});
+
+// Privacy log
+const PRIVACY_LOGS = [
+  {time:'10 มิ.ย. 69 09:12','user':'อสม.สุวรรณา','action':'บันทึกผลคัดกรอง','data':'ข้อมูลสุขภาพ (12 ราย)','ip':'192.168.1.10'},
+  {time:'10 มิ.ย. 69 08:45','user':'เจ้าหน้าที่ รพ.สต.','action':'ดูรายงานสรุป','data':'ข้อมูลรวม ไม่ระบุตัวตน','ip':'192.168.1.5'},
+  {time:'09 มิ.ย. 69 16:30','user':'อสม.นิภา','action':'บันทึกผลคัดกรอง','data':'ข้อมูลสุขภาพ (8 ราย)','ip':'192.168.1.22'},
+  {time:'09 มิ.ย. 69 14:00','user':'ผู้ดูแลระบบ','action':'Export รายงาน','data':'ข้อมูลรวม (anonymized)','ip':'192.168.1.2'},
+  {time:'08 มิ.ย. 69 10:15','user':'อสม.วิเชียร','action':'บันทึกผลคัดกรอง','data':'ข้อมูลสุขภาพ (15 ราย)','ip':'192.168.1.18'},
+];
+
+const FEEDBACKS = [
+  {rating:5,comment:'บริการดีมาก อสม.ใส่ใจดูแลครับ',date:'10 มิ.ย.'},
+  {rating:4,comment:'สะดวกดี แต่อยากให้มีตารางนัดล่วงหน้า',date:'09 มิ.ย.'},
+  {rating:5,comment:'ขอบคุณที่มาให้บริการถึงบ้าน',date:'09 มิ.ย.'},
+  {rating:3,comment:'รอคิวนานเล็กน้อย แต่ใจดีมาก',date:'08 มิ.ย.'},
+];
+
+// ================== NAVIGATION ==================
+function showPage(pageId, navEl) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el = document.getElementById('page-'+pageId);
+  if(el) el.classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
+  initPage(pageId);
+}
+
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function initPage(pageId){
+  if(pageId==='dashboard') initDashboard();
+  else if(pageId==='stats-daily') initStatsDaily();
+  else if(pageId==='stats-age') initStatsAge();
+  else if(pageId==='stats-freq') initStatsFreq();
+  else if(pageId==='targets') initTargets();
+  else if(pageId==='results') initResults();
+  else if(pageId==='privacy') initPrivacy();
+  else if(pageId==='satisfaction') initSatisfaction();
+}
+
+// ================== TABS ==================
+function switchTab(group, tabId, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const content = document.getElementById(tabId);
+  if(content) content.classList.add('active');
+  if(tabId==='tab-month') initMonthlyTab();
+  if(tabId==='tab-year') initYearTab();
+}
+
+// ================== DASHBOARD ==================
+let dashInited = false;
+function initDashboard(){
+  if(dashInited) return; dashInited=true;
+  renderVillageCoverage();
+  renderBPChart(); renderDTXChart(); renderBMIChart(); renderGenderChart();
+  const d = new Date();
+  document.getElementById('today-date').textContent = `${d.getDate()} ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][d.getMonth()]} ${d.getFullYear()+543}`;
+}
+
+function renderVillageCoverage(){
+  const container = document.getElementById('village-coverage');
+  let html = '';
+  for(let v=1;v<=12;v++){
+    const total = VILLAGE_TARGETS[v];
+    const done = screeningResults.filter(r=>r.village===v).length;
+    const pct = Math.round(done/total*100);
+    const color = pct>=75?'fill-green':pct>=50?'fill-blue':pct>=25?'fill-orange':'fill-red';
+    html+=`<div class="progress-wrap">
+      <div class="progress-label"><span>${VILLAGES[v+'']}</span><span>${done}/${total} (${pct}%)</span></div>
+      <div class="progress-bar"><div class="progress-fill ${color}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderBPChart(){
+  const data = screeningResults;
+  let n=0,h1=0,h2=0,h3=0,above=0;
+  data.forEach(r=>{
+    if(r.sbp<130) n++;
+    else if(r.sbp<140) above++;
+    else if(r.sbp<160) h1++;
+    else if(r.sbp<180) h2++;
+    else h3++;
+  });
+  new Chart(document.getElementById('bpChart'),{
+    type:'doughnut',
+    data:{labels:['ปกติ (<130)','สูงกว่าปกติ (130-139)','ระดับ 1','ระดับ 2','ระดับ 3'],
+      datasets:[{data:[n,above,h1,h2,h3],backgroundColor:['#1d9e75','#fac775','#ef9f27','#e24b4a','#a32d2d'],
+        borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:8}}}}
+  });
+}
+
+function renderDTXChart(){
+  const data = screeningResults;
+  let normal=0,risk=0,sick=0;
+  data.forEach(r=>{if(r.dtx<100)normal++;else if(r.dtx<126)risk++;else sick++;});
+  new Chart(document.getElementById('dtxChart'),{
+    type:'doughnut',
+    data:{labels:['ปกติ (<100)','เสี่ยง (100-125)','ป่วย (≥126)'],
+      datasets:[{data:[normal,risk,sick],backgroundColor:['#1d9e75','#fac775','#e24b4a'],
+        borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:8}}}}
+  });
+}
+
+function renderBMIChart(){
+  const data = screeningResults;
+  let thin=0,norm=0,over=0,ob=0,ob2=0;
+  data.forEach(r=>{
+    if(r.bmi<18.5)thin++;
+    else if(r.bmi<23)norm++;
+    else if(r.bmi<25)over++;
+    else if(r.bmi<30)ob++;
+    else ob2++;
+  });
+  new Chart(document.getElementById('bmiChart'),{
+    type:'bar',
+    data:{labels:['<18.5','18.5–22.9','23–24.9','25–29.9','≥30'],
+      datasets:[{label:'จำนวนคน',data:[thin,norm,over,ob,ob2],
+        backgroundColor:['#85b7eb','#1d9e75','#fac775','#ef9f27','#e24b4a'],
+        borderRadius:4,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:'#e8f0eb'}},x:{grid:{display:false},ticks:{font:{size:11}}}}}
+  });
+}
+
+function renderGenderChart(){
+  const total = allTargets.length;
+  const male = allTargets.filter(t=>t.gender==='ชาย').length;
+  const female = total - male;
+  new Chart(document.getElementById('genderChart'),{
+    type:'doughnut',
+    data:{labels:[`ชาย (${male.toLocaleString()})`,`หญิง (${female.toLocaleString()})`],
+      datasets:[{data:[male,female],backgroundColor:['#378add','#d4537e'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:13},padding:12}}}}
+  });
+}
+
+// ================== DAILY STATS ==================
+let dailyInited=false;
+function initStatsDaily(){
+  if(dailyInited) return; dailyInited=true;
+  // Daily chart
+  const days=[],vals=[];
+  for(let i=1;i<=10;i++){days.push(i+'');vals.push(rand(15,87));}
+  new Chart(document.getElementById('dailyChart'),{
+    type:'bar',
+    data:{labels:days,datasets:[{label:'จำนวนที่คัดกรอง',data:vals,
+      backgroundColor:'#2d9e6b',borderRadius:5,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:'#e8f0eb'},title:{display:true,text:'ราย'}},
+        x:{grid:{display:false},title:{display:true,text:'วันที่ (มิถุนายน 2569)'}}}}
+  });
+  initMonthlyTable();
+}
+
+function initMonthlyTable(){
+  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.'];
+  let html='';
+  for(let v=1;v<=12;v++){
+    const target=VILLAGE_TARGETS[v];
+    const mData=months.map(()=>rand(10,80));
+    const total=mData.reduce((a,b)=>a+b,0);
+    const pct=Math.min(100,Math.round(total/target*100));
+    html+=`<tr><td>${VILLAGES[v+'']}</td><td>${target}</td>${mData.map(m=>`<td>${m}</td>`).join('')}<td><strong>${total}</strong></td><td><span class="badge ${pct>=75?'badge-green':pct>=50?'badge-yellow':'badge-orange'}">${pct}%</span></td></tr>`;
+  }
+  const el=document.getElementById('monthly-table-body');
+  if(el) el.innerHTML=html;
+}
+
+function initMonthlyTab(){
+  if(!document.getElementById('monthlyChart').chart){
+    const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.'];
+    const vals=[120,185,245,312,428,883];
+    new Chart(document.getElementById('monthlyChart'),{
+      type:'bar',
+      data:{labels:months,datasets:[{label:'จำนวนคัดกรอง',data:vals,
+        backgroundColor:'#2d9e6b',borderRadius:6,borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true,grid:{color:'#e8f0eb'}},x:{grid:{display:false}}}}
+    });
+  }
+}
+
+function initYearTab(){
+  if(!document.getElementById('yearChart').chart){
+    const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    new Chart(document.getElementById('yearChart'),{
+      type:'line',
+      data:{labels:months,datasets:[
+        {label:'2567',data:[80,90,120,100,140,130,120,110,100,130,140,150],borderColor:'#b5d4f4',borderWidth:2,fill:false,tension:0.3,pointRadius:3},
+        {label:'2568',data:[100,120,140,130,180,170,160,140,130,160,170,190],borderColor:'#378add',borderWidth:2,fill:false,tension:0.3,pointRadius:3},
+        {label:'2569',data:[120,185,245,312,428,883,null,null,null,null,null,null],borderColor:'#1a6b4a',borderWidth:2.5,fill:false,tension:0.3,pointRadius:4},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{font:{size:12}}}},
+        scales:{y:{beginAtZero:true,grid:{color:'#e8f0eb'}},x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:0}}}}
+    });
+  }
+}
+
+// ================== AGE STATS ==================
+let ageInited=false;
+function initStatsAge(){
+  if(ageInited) return; ageInited=true;
+  new Chart(document.getElementById('ageDistChart'),{
+    type:'bar',
+    data:{labels:['35–44 ปี','45–54 ปี','55–64 ปี','65+ ปี'],
+      datasets:[
+        {label:'ชาย',data:[356,411,394,320],backgroundColor:'#378add',borderRadius:4,borderWidth:0},
+        {label:'หญิง',data:[536,613,589,480],backgroundColor:'#d4537e',borderRadius:4,borderWidth:0},
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:12}}}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#e8f0eb'}}}}
+  });
+  new Chart(document.getElementById('ageRiskChart'),{
+    type:'bar',
+    data:{labels:['35–44 ปี','45–54 ปี','55–64 ปี','65+ ปี'],
+      datasets:[
+        {label:'ความดันสูง %',data:[12,28,44,58],backgroundColor:'#e24b4a',borderRadius:4,borderWidth:0},
+        {label:'น้ำตาลสูง %',data:[8,18,31,42],backgroundColor:'#fac775',borderRadius:4,borderWidth:0},
+        {label:'BMI เกิน %',data:[34,42,38,28],backgroundColor:'#ef9f27',borderRadius:4,borderWidth:0},
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:11}}}},
+      scales:{y:{beginAtZero:true,max:70,grid:{color:'#e8f0eb'},title:{display:true,text:'%'}},x:{grid:{display:false}}}}
+  });
+}
+
+// ================== FREQ STATS ==================
+let freqInited=false;
+function initStatsFreq(){
+  if(freqInited) return; freqInited=true;
+  new Chart(document.getElementById('freqChart'),{
+    type:'doughnut',
+    data:{labels:['1 ครั้ง/ปี (68.4%)','2 ครั้ง/ปี (25.0%)','3+ ครั้ง/ปี (6.6%)'],
+      datasets:[{data:[1487,543,143],backgroundColor:['#1d9e75','#378add','#ef9f27'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10}}}}
+  });
+  let html='';
+  for(let v=1;v<=12;v++){
+    const t=VILLAGE_TARGETS[v];
+    const a=rand(Math.floor(t*0.5),Math.floor(t*0.75));
+    const b=rand(Math.floor(t*0.1),Math.floor(t*0.25));
+    const c=rand(5,20);
+    const never=t-a-b-c;
+    const avg=((a*1+b*2+c*3)/(a+b+c)).toFixed(1);
+    html+=`<tr><td>${VILLAGES[v+'']}</td><td>${t}</td><td>${a}</td><td>${b}</td><td>${c}</td><td>${never}</td><td>${avg}</td></tr>`;
+  }
+  document.getElementById('freq-table-body').innerHTML=html;
+}
+
+// ================== TARGETS ==================
+let targetPage=1, filteredTargets=[];
+function initTargets(){
+  filteredTargets=[...allTargets];
+  renderTargetsTable();
+}
+function filterTargets(){
+  const q=document.getElementById('target-search').value.toLowerCase();
+  const v=document.getElementById('target-village-filter').value;
+  const s=document.getElementById('target-status-filter').value;
+  filteredTargets=allTargets.filter(t=>{
+    const matchQ=!q||t.name.toLowerCase().includes(q);
+    const matchV=!v||t.villageName===v;
+    const matchS=!s||(s==='screened'&&t.screened)||(s==='pending'&&!t.screened);
+    return matchQ&&matchV&&matchS;
+  });
+  targetPage=1;
+  renderTargetsTable();
+}
+function renderTargetsTable(){
+  const perPage=20;
+  const total=filteredTargets.length;
+  const totalPages=Math.ceil(total/perPage);
+  const start=(targetPage-1)*perPage;
+  const slice=filteredTargets.slice(start,start+perPage);
+  document.getElementById('target-count-label').textContent=`แสดง ${start+1}–${Math.min(start+perPage,total)} จาก ${total.toLocaleString()} รายการ`;
+  document.getElementById('page-indicator').textContent=`หน้า ${targetPage} / ${totalPages}`;
+  document.getElementById('prev-btn').disabled=targetPage===1;
+  document.getElementById('next-btn').disabled=targetPage===totalPages;
+  let html='';
+  slice.forEach((t,i)=>{
+    const status=t.screened?'<span class="badge badge-green">คัดกรองแล้ว</span>':'<span class="badge badge-orange">รอคัดกรอง</span>';
+    html+=`<tr>
+      <td>${start+i+1}</td>
+      <td>${t.gender==='ชาย'?'นาย':'นาง'} ${t.name}</td>
+      <td>${t.gender}</td><td>${t.age} ปี</td>
+      <td style="white-space:nowrap">${t.villageName}</td>
+      <td style="font-size:11px">${t.asm.split(' ').slice(0,2).join(' ')}</td>
+      <td>${status}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="showPersonDetail(${t.id})">ดู</button></td>
+    </tr>`;
+  });
+  document.getElementById('targets-tbody').innerHTML=html;
+}
+function changePage(dir){
+  const perPage=20;
+  const totalPages=Math.ceil(filteredTargets.length/perPage);
+  targetPage=Math.max(1,Math.min(totalPages,targetPage+dir));
+  renderTargetsTable();
+}
+function showPersonDetail(id){
+  const t=allTargets.find(p=>p.id===id);
+  if(!t) return;
+  const r=screeningResults.find(p=>p.id===id);
+  let html=`<div style="font-size:13px;line-height:2">
+    <p><strong>ชื่อ:</strong> ${t.gender==='ชาย'?'นาย':'นาง'} ${t.name}</p>
+    <p><strong>เพศ:</strong> ${t.gender} | <strong>อายุ:</strong> ${t.age} ปี</p>
+    <p><strong>หมู่บ้าน:</strong> ${t.villageName}</p>
+    <p><strong>อสม.:</strong> ${t.asm}</p>`;
+  if(r){
+    const bpStatus=r.sbp<130?'ปกติ':r.sbp<140?'สูงกว่าปกติ':r.sbp<160?'ความดันสูงระดับ 1':'ความดันสูงระดับ 2+';
+    const dtxStatus=r.dtx<100?'ปกติ':r.dtx<126?'เสี่ยงเบาหวาน':'ป่วยเบาหวาน';
+    const bmiStatus=r.bmi<18.5?'ต่ำกว่าเกณฑ์':r.bmi<23?'ปกติ':r.bmi<25?'เกินเกณฑ์':r.bmi<30?'อ้วน':'อ้วนมาก';
+    html+=`<div class="section-divider"></div>
+    <p><strong>วันที่คัดกรอง:</strong> ${r.date}</p>
+    <p><strong>ความดัน:</strong> ${r.sbp}/${r.dbp} — <span class="badge ${r.sbp<130?'badge-green':r.sbp<140?'badge-yellow':'badge-red'}">${bpStatus}</span></p>
+    <p><strong>น้ำตาล DTX:</strong> ${r.dtx} — <span class="badge ${r.dtx<100?'badge-green':r.dtx<126?'badge-yellow':'badge-red'}">${dtxStatus}</span></p>
+    <p><strong>BMI:</strong> ${r.bmi} — <span class="badge ${r.bmi<23?'badge-green':r.bmi<25?'badge-yellow':'badge-orange'}">${bmiStatus}</span></p>
+    <p><strong>รอบเอว:</strong> ${r.waist} นิ้ว</p>
+    <p><strong>สูบบุหรี่:</strong> ${r.smoke} | <strong>ดื่มสุรา:</strong> ${r.drink}</p>`;
+  } else {
+    html+='<p style="color:var(--warn)">⚠️ ยังไม่ได้รับการคัดกรอง</p>';
+  }
+  html+='</div>';
+  document.getElementById('modal-title').textContent='ข้อมูล: '+t.name;
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+
+// ================== RESULTS ==================
+let resultsInited=false;
+function initResults(){
+  if(resultsInited) return; resultsInited=true;
+  renderResultsTable(screeningResults.slice(0,50));
+}
+function filterResults(){
+  const q=document.getElementById('result-search').value.toLowerCase();
+  const v=document.getElementById('result-village').value;
+  const risk=document.getElementById('result-risk').value;
+  let filtered=screeningResults.filter(r=>{
+    const matchQ=!q||r.name.toLowerCase().includes(q);
+    const matchV=!v||r.village.toString()===v;
+    let matchR=true;
+    if(risk==='normal') matchR=r.sbp<130&&r.dtx<100&&r.bmi<25;
+    else if(risk==='risk') matchR=r.sbp>=130&&r.sbp<160||r.dtx>=100&&r.dtx<126;
+    else if(risk==='sick') matchR=r.sbp>=160||r.dtx>=126;
+    return matchQ&&matchV&&matchR;
+  });
+  renderResultsTable(filtered.slice(0,100));
+}
+function renderResultsTable(data){
+  let html='';
+  data.forEach(r=>{
+    const bpClass=r.sbp<130?'badge-green':r.sbp<160?'badge-yellow':'badge-red';
+    const dtxClass=r.dtx<100?'badge-green':r.dtx<126?'badge-yellow':'badge-red';
+    const bmiClass=r.bmi<23?'badge-green':r.bmi<25?'badge-yellow':'badge-orange';
+    const risk=r.sbp>=160||r.dtx>=126?'<span class="risk-high">ป่วย</span>':r.sbp>=130||r.dtx>=100?'<span class="risk-watch">เสี่ยง</span>':'<span class="risk-normal">ปกติ</span>';
+    html+=`<tr>
+      <td>${r.gender==='ชาย'?'นาย':'นาง'} ${r.name}</td>
+      <td>${r.gender}</td><td>${r.village}</td>
+      <td><span class="badge ${bpClass}">${r.sbp}/${r.dbp}</span></td>
+      <td></td>
+      <td><span class="badge ${dtxClass}">${r.dtx}</span></td>
+      <td><span class="badge ${bmiClass}">${r.bmi}</span></td>
+      <td>${risk}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.date}</td>
+    </tr>`;
+  });
+  document.getElementById('results-tbody').innerHTML=html||'<tr><td colspan="9" style="text-align:center;color:var(--text2)">ไม่พบข้อมูล</td></tr>';
+}
+
+// ================== SCREENING FORM ==================
+function searchPerson(){
+  const q=document.getElementById('search-person').value.toLowerCase();
+  if(q.length<2) return;
+  const found=allTargets.find(t=>t.name.toLowerCase().includes(q));
+  if(found){
+    document.getElementById('f-name').value=(found.gender==='ชาย'?'นาย ':'นาง ')+found.name;
+    document.getElementById('f-gender').value=found.gender;
+    document.getElementById('f-age').value=found.age;
+    document.getElementById('f-village').value=found.villageName;
+    document.getElementById('f-asr').value=found.asm;
+  }
+}
+
+function calcResult(){
+  const sbp=parseInt(document.getElementById('f-sbp').value)||0;
+  const dbp=parseInt(document.getElementById('f-dbp').value)||0;
+  const dtx=parseInt(document.getElementById('f-dtx').value)||0;
+  const bmi=parseFloat(document.getElementById('f-bmi').value)||0;
+  if(!sbp&&!dtx&&!bmi) return;
+  const box=document.getElementById('result-box');
+  box.classList.add('show');
+  let html='';
+  if(sbp){
+    const bpRes=sbp<120?{t:'เหมาะสม',c:'badge-green'}:sbp<130?{t:'ปกติ',c:'badge-green'}:sbp<140?{t:'สูงกว่าปกติ',c:'badge-yellow'}:sbp<160?{t:'ความดันสูงระดับ 1',c:'badge-orange'}:{t:'ความดันสูงระดับ 2+',c:'badge-red'};
+    html+=`<div class="result-row"><span>ความดันโลหิต ${sbp}/${dbp} มม.ปรอท</span><span class="badge ${bpRes.c}">${bpRes.t}</span></div>`;
+  }
+  if(dtx){
+    const dtxRes=dtx<100?{t:'ปกติ',c:'badge-green'}:dtx<126?{t:'เสี่ยงเบาหวาน',c:'badge-yellow'}:{t:'ป่วยเบาหวาน',c:'badge-red'};
+    html+=`<div class="result-row"><span>น้ำตาล DTX ${dtx} mg/dL</span><span class="badge ${dtxRes.c}">${dtxRes.t}</span></div>`;
+  }
+  if(bmi){
+    const bmiRes=bmi<18.5?{t:'น้ำหนักต่ำ',c:'badge-blue'}:bmi<23?{t:'ปกติ',c:'badge-green'}:bmi<25?{t:'น้ำหนักเกิน',c:'badge-yellow'}:bmi<30?{t:'อ้วน',c:'badge-orange'}:{t:'อ้วนมาก',c:'badge-red'};
+    html+=`<div class="result-row"><span>BMI ${bmi}</span><span class="badge ${bmiRes.c}">${bmiRes.t}</span></div>`;
+  }
+  document.getElementById('result-content').innerHTML=html;
+}
+
+function saveScreening(){
+  const name=document.getElementById('f-name').value;
+  if(!name){alert('กรุณากรอกชื่อ-สกุล');return;}
+  alert('✅ บันทึกผลการคัดกรองเรียบร้อยแล้ว\n\n'+name+'\nวันที่: 10 มิ.ย. 2569');
+  clearForm();
+}
+
+function clearForm(){
+  ['f-name','f-age','f-sbp','f-dbp','f-dtx','f-bmi','f-waist','f-asr','search-person'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  ['f-gender','f-village','f-smoke','f-drink'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.selectedIndex=0;
+  });
+  document.getElementById('result-box').classList.remove('show');
+}
+
+// ================== PRIVACY ==================
+function initPrivacy(){
+  let html='';
+  PRIVACY_LOGS.forEach(l=>{
+    html+=`<tr><td>${l.time}</td><td>${l.user}</td><td>${l.action}</td><td>${l.data}</td><td style="font-family:monospace;font-size:11px">${l.ip}</td></tr>`;
+  });
+  document.getElementById('privacy-log-body').innerHTML=html;
+}
+
+// ================== SATISFACTION ==================
+const SAT_QUESTIONS=[
+  'ความสะดวกในการเข้ารับบริการ',
+  'ความรวดเร็วในการให้บริการ',
+  'ความสุภาพและอัธยาศัยของ อสม.',
+  'ความถูกต้องของการตรวจวัด',
+  'การอธิบายผลและคำแนะนำ',
+];
+let satRatings={};
+let satisfInited=false;
+function initSatisfaction(){
+  if(satisfInited) return; satisfInited=true;
+  renderSatQuestions();
+  renderSatisfCharts();
+  renderFeedbacks();
+}
+function renderSatQuestions(){
+  let html='';
+  SAT_QUESTIONS.forEach((q,i)=>{
+    html+=`<div style="margin-bottom:1rem">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${i+1}. ${q}</div>
+      <div class="star-row">${[1,2,3,4,5].map(s=>`<span class="star" data-q="${i}" data-v="${s}" onclick="rateSat(${i},${s})">★</span>`).join('')}</div>
+    </div>`;
+  });
+  document.getElementById('sat-questions').innerHTML=html;
+}
+function rateSat(q,v){
+  satRatings[q]=v;
+  document.querySelectorAll(`.star[data-q="${q}"]`).forEach(s=>{
+    s.classList.toggle('active',parseInt(s.dataset.v)<=v);
+  });
+}
+function submitSatisfaction(){
+  const filled=Object.keys(satRatings).length;
+  if(filled<SAT_QUESTIONS.length){alert('กรุณาประเมินทุกหัวข้อ');return;}
+  alert('✅ ขอบคุณสำหรับการประเมินความพึงพอใจ');
+  satRatings={};
+  document.querySelectorAll('.star').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sat-comment').value='';
+}
+function renderSatisfCharts(){
+  new Chart(document.getElementById('satisfChart'),{
+    type:'bar',
+    data:{labels:['ความสะดวก','ความรวดเร็ว','อัธยาศัย','ความถูกต้อง','คำแนะนำ'],
+      datasets:[{label:'คะแนนเฉลี่ย',data:[4.5,4.1,4.8,4.2,4.0],
+        backgroundColor:['#1d9e75','#378add','#1d9e75','#378add','#ef9f27'],borderRadius:5,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{min:0,max:5,grid:{color:'#e8f0eb'},title:{display:true,text:'คะแนน (1-5)'}},x:{grid:{display:false},ticks:{font:{size:11}}}},
+      plugins:{legend:{display:false}}}
+  });
+  new Chart(document.getElementById('satisfPieChart'),{
+    type:'doughnut',
+    data:{labels:['มากที่สุด (5)','มาก (4)','ปานกลาง (3)','น้อย (1-2)'],
+      datasets:[{data:[198,161,42,11],backgroundColor:['#1d9e75','#2d9e6b','#fac775','#e24b4a'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:8}}}}
+  });
+}
+function renderFeedbacks(){
+  const stars='★★★★★';
+  let html='';
+  FEEDBACKS.forEach(f=>{
+    html+=`<div style="border-bottom:1px solid var(--border);padding:10px 0;font-size:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:#e8a020">${stars.slice(0,f.rating)}<span style="color:#ccc">${stars.slice(f.rating)}</span></span>
+        <span class="text-muted">${f.date}</span>
+      </div>
+      <p style="margin-top:4px;color:var(--text2)">${f.comment}</p>
+    </div>`;
+  });
+  document.getElementById('feedback-list').innerHTML=html;
+}
+
+// ================== UTILS ==================
+function exportReport(){alert('📥 กำลังดาวน์โหลดรายงาน PDF...\n(ในระบบจริงจะสร้าง PDF อัตโนมัติ)');}
+function printPage(){window.print();}
+function exportTargets(){alert('📥 กำลัง Export รายชื่อกลุ่มเป้าหมาย CSV...');}
+
+// Init dashboard on load
+window.addEventListener('DOMContentLoaded',()=>{
+  initDashboard();
+  initTargets();
+  // Update today count
+  document.getElementById('today-count').textContent=rand(18,45);
+});
+</script>
+</body>
+</html>
